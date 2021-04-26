@@ -20,17 +20,40 @@ const getArtists = (request, response) => {
 
 const addArtist = (request, response) => {
   const {name, age} = request.body
-  console.log(request.body);
-  const artist_id = name+'_id';
   console.log(name, age);
+  const artist_id = name ? Buffer.from(name).toString('base64').slice(0, 22): name;
+  const albums = `https://integracion2gazali.herokuapp.com/artists/${artist_id}/albums`;
+  const tracks = `https://integracion2gazali.herokuapp.com/artists/${artist_id}/tracks`;
+  const self   = `https://integracion2gazali.herokuapp.com/artists/${artist_id}`;
   pool.query(
-    'INSERT INTO artists (artist_id, name, age) VALUES ($1, $2, $3)',
-    [artist_id, name, age],
-    (error) => {
+    'INSERT INTO artists (artist_id, name, age, albums, tracks, self) VALUES ($1, $2, $3, $4, $5, $6)',
+    [artist_id, name, age, albums, tracks, self],
+    (error, results) => {
       if (error) {
-        throw error
+        console.log(error)
+        /* throw error */
+        if (error.constraint == 'artists_pkey') {
+          response.status(409).json({
+            artist_id: artist_id,
+            name: name,
+            age: age,
+            albums: albums,
+            tracks: tracks,
+            self: self
+          })
+        } else {
+          response.status(400).send();
+        }
+      } else {
+        response.status(201).json({
+          artist_id: artist_id,
+          name: name,
+          age: age,
+          albums: albums,
+          tracks: tracks,
+          self: self
+        })
       }
-      response.status(201).json({status: 'success', message: 'Artist added.'})
     },
   )
 }
