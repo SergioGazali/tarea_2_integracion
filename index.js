@@ -2,7 +2,7 @@ const express = require('express')
 const bodyParser = require('body-parser')
 const cors = require('cors')
 const {pool} = require('./config')
-const { request } = require('express')
+const { request, response } = require('express')
 
 const app = express()
 
@@ -73,44 +73,74 @@ const getTrack = (request, response) => {
   })
 } 
 
-const getAlbumsByArtist = (request, response) => {
+const getAlbumsByArtist = async (request, response) => {
   const artist_id = request.params.artist_id;
 
-  pool.query('SELECT album_id AS id, artist_id, name, genre, artist, tracks, self FROM albums WHERE artist_id = $1', [artist_id], (error, results) => {
-    if (error) {
-      response.status(500).send()
-    }else if (results.rowCount) {
-      response.status(200).json(results.rows)
-    } else {
-      response.status(404).send()
-    }
-  })
+  var artist_response;
+  try {
+    artist_response = await pool.query('SELECT * FROM artists WHERE artist_id = $1',[artist_id])
+  } catch (err) {
+    console.log(err.stack)
+    response.status(500).send()
+    return
+  }
+  if (artist_response.rowCount) {
+    pool.query('SELECT album_id AS id, artist_id, name, genre, artist, tracks, self FROM albums WHERE artist_id = $1', [artist_id], (error, results) => {
+      if (error) {
+        response.status(500).send()
+      } else {
+        response.status(200).json(results.rows)
+      }
+    })
+  } else {
+    response.status(404).send()
+  }
 }
-const getTracksByArtist = (request, response) => {
+const getTracksByArtist = async (request, response) => {
   const artist_id = request.params.artist_id;
 
-  pool.query('SELECT track_id AS id, tracks.album_id, tracks.name, duration, times_played, tracks.artist, album, tracks.self FROM tracks, albums  WHERE tracks.album_id = albums.album_id AND artist_id = $1', [artist_id], (error, results) => {
-    if (error) {
-      response.status(500).send()
-    }else if (results.rowCount) {
-      response.status(200).json(results.rows)
-    } else {
-      response.status(404).send()
-    }
-  })
+  var artist_response;
+  try {
+    artist_response = await pool.query('SELECT * FROM artists WHERE artist_id = $1',[artist_id])
+  } catch (err) {
+    console.log(err.stack)
+    response.status(500).send()
+    return
+  }
+  if (artist_response.rowCount) {
+    pool.query('SELECT track_id AS id, tracks.album_id, tracks.name, duration, times_played, tracks.artist, album, tracks.self FROM tracks, albums  WHERE tracks.album_id = albums.album_id AND artist_id = $1', [artist_id], (error, results) => {
+      if (error) {
+        response.status(500).send()
+      }else {
+        response.status(200).json(results.rows)
+      }
+    })
+  } else {
+    response.status(404).send()
+  }
 }
-const getTracksByAlbum = (request, response) => {
+const getTracksByAlbum = async (request, response) => {
   const album_id = request.params.album_id;
 
-  pool.query('SELECT track_id AS id, album_id, name, duration, times_played, artist, album, self FROM tracks WHERE album_id = $1', [album_id], (error, results) => {
-    if (error) {
-      response.status(500).send()
-    }else if (results.rowCount) {
-      response.status(200).json(results.rows)
-    } else {
-      response.status(404).send()
-    }
-  })
+  var album_response;
+  try {
+    album_response = await pool.query('SELECT * FROM albums WHERE album_id = $1',[album_id])
+  } catch (err) {
+    console.log(err.stack)
+    response.status(500).send()
+    return
+  }
+  if (album_response.rowCount) {
+    pool.query('SELECT track_id AS id, album_id, name, duration, times_played, artist, album, self FROM tracks WHERE album_id = $1', [album_id], (error, results) => {
+      if (error) {
+        response.status(500).send()
+      }else {
+        response.status(200).json(results.rows)
+      }
+    })
+  } else {
+    response.status(404).send()
+  }
 }
 
 const addArtist = (request, response) => {
@@ -257,6 +287,113 @@ const addTrack = async (request, response) => {
   )
 }
 
+const playTrack = (request, response) => {
+  const track_id = request.params.track_id;
+  pool.query('UPDATE tracks SET times_played = times_played + 1 WHERE track_id = $1', [track_id],
+    (error, results) => {
+      if (error) {
+        response.status(500).send()
+      } else if (results.rowCount){
+        response.status(200).send()
+      } else {
+        response.status(404).send()
+      }
+    }
+  )
+}
+
+const playAlbum = async (request, response) => {
+  const album_id = request.params.album_id;
+  var album_response;
+  try {
+    album_response = await pool.query('SELECT * FROM albums WHERE album_id = $1',[album_id])
+  } catch (err) {
+    console.log(err.stack)
+    response.status(500).send()
+    return
+  }
+  if (album_response.rowCount) {
+    pool.query('UPDATE tracks SET times_played = times_played + 1 WHERE album_id = $1', [album_id],
+    (error, results) => {
+      if (error) {
+        response.status(500).send()
+      } else {
+        response.status(200).send()
+      }
+    })
+  } else {
+    response.status(404).send()
+  }
+}
+
+const playArtist = async (request, response) => {
+  const artist_id = request.params.artist_id;
+  var artist_response;
+  try {
+    artist_response = await pool.query('SELECT * FROM artists WHERE artist_id = $1',[artist_id])
+  } catch (err) {
+    console.log(err.stack)
+    response.status(500).send()
+    return
+  }
+  if (artist_response.rowCount) {
+    pool.query('UPDATE tracks SET times_played = times_played + 1 FROM albums WHERE tracks.album_id = albums.album_id AND artist_id = $1', [artist_id],
+    (error, results) => {
+      if (error) {
+        response.status(500).send()
+      } else {
+        response.status(200).send()
+      }
+    })
+  } else {
+    response.status(404).send()
+  }
+}
+
+const deleteTrack = (request, response) => {
+  const track_id = request.params.track_id;
+  pool.query('DELETE FROM tracks WHERE track_id = $1 RETURNING *', [track_id],
+    (error, results) => {
+      if (error) {
+        response.status(500).send()
+      } else if (results.rowCount){
+        response.status(204).send()
+      } else {
+        response.status(404).send()
+      }
+    }
+  )
+}
+const deleteAlbum = (request, response) => {
+  const album_id = request.params.album_id;
+  pool.query('DELETE FROM albums WHERE album_id = $1 RETURNING *', [album_id],
+    (error, results) => {
+      if (error) {
+        response.status(500).send()
+      } else if (results.rowCount){
+        response.status(204).send()
+      } else {
+        response.status(404).send()
+      }
+    }
+  )
+}
+const deleteArtist = (request, response) => {
+  const artist_id = request.params.artist_id;
+  pool.query('DELETE FROM artists WHERE artist_id = $1 RETURNING *', [artist_id],
+    (error, results) => {
+      if (error) {
+        response.status(500).send()
+      } else if (results.rowCount){
+        response.status(204).send()
+      } else {
+        response.status(404).send()
+      }
+    }
+  )
+}
+
+
 app
   .route('/artists')
   .get(getArtists)
@@ -265,12 +402,15 @@ app
 app
   .route('/artists/:artist_id')
   .get(getArtist)
+  .delete(deleteArtist)
 app
   .route('/albums/:album_id')
   .get(getAlbum)
+  .delete(deleteAlbum)
 app
   .route('/tracks/:track_id')
   .get(getTrack)
+  .delete(deleteTrack)
 
 app
   .route('/artists/:artist_id/albums')
@@ -292,6 +432,18 @@ app
   .route('/albums/:album_id/tracks')
   .get(getTracksByAlbum)
   .post(addTrack)
+
+app
+  .route('/tracks/:track_id/play')
+  .put(playTrack)
+
+app
+  .route('/albums/:album_id/tracks/play')
+  .put(playAlbum)
+
+app
+  .route('/artists/:artist_id/albums/play')
+  .put(playArtist)
 
 // Start server
 app.listen(process.env.PORT || 3002, () => {
