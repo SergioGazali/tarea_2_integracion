@@ -2,6 +2,7 @@ const express = require('express')
 const bodyParser = require('body-parser')
 const cors = require('cors')
 const {pool} = require('./config')
+const { request } = require('express')
 
 const app = express()
 
@@ -10,12 +11,105 @@ app.use(bodyParser.urlencoded({extended: true}))
 app.use(cors())
 
 const getArtists = (request, response) => {
-  pool.query('SELECT * FROM artists', (error, results) => {
+  pool.query('SELECT artist_id AS id, name, age, albums, tracks, self FROM artists', (error, results) => {
     if (error) {
-      throw error
+      response.status(500).send()
     }
     // que retorne id y no artist_id
     response.status(200).json(results.rows)
+  })
+}
+const getAlbums = (request, response) => {
+  pool.query('SELECT album_id AS id, artist_id, name, genre, artist, tracks, self FROM albums', (error, results) => {
+    if (error) {
+      response.status(500).send()
+    }
+    response.status(200).json(results.rows)
+  })
+}
+const getTracks = (request, response) => {
+  pool.query('SELECT track_id AS id, album_id, name, duration, times_played, artist, album, self FROM tracks', (error, results) => {
+    if (error) {
+      response.status(500).send()
+    }
+    response.status(200).json(results.rows)
+  })
+}
+
+const getArtist = (request, response) => {
+  const artist_id = request.params.artist_id;
+  pool.query('SELECT artist_id AS id, name, age, albums, tracks, self FROM artists WHERE artist_id = $1', [artist_id], (error, results) => {
+    if (error) {
+      response.status(500).send()
+    } else if (results.rowCount) {
+      response.status(200).json(results.rows[0])
+    } else {
+      response.status(404).send()
+    }
+  })
+}
+const getAlbum = (request, response) => {
+  const album_id = request.params.album_id;
+  pool.query('SELECT album_id AS id, artist_id, name, genre, artist, tracks, self FROM albums WHERE album_id = $1', [album_id], (error, results) => {
+    if (error) {
+      response.status(500).send()
+    } else if (results.rowCount) {
+      response.status(200).json(results.rows[0])
+    } else {
+      response.status(404).send()
+    }
+  })
+}
+const getTrack = (request, response) => {
+  const track_id = request.params.track_id;
+  pool.query('SELECT track_id AS id, album_id, name, duration, times_played, artist, album, self FROM tracks WHERE track_id = $1', [track_id], (error, results) => {
+    if (error) {
+      response.status(500).send()
+    } else if (results.rowCount) {
+      response.status(200).json(results.rows[0])
+    } else {
+      response.status(404).send()
+    }
+  })
+} 
+
+const getAlbumsByArtist = (request, response) => {
+  const artist_id = request.params.artist_id;
+
+  pool.query('SELECT album_id AS id, artist_id, name, genre, artist, tracks, self FROM albums WHERE artist_id = $1', [artist_id], (error, results) => {
+    if (error) {
+      response.status(500).send()
+    }else if (results.rowCount) {
+      response.status(200).json(results.rows)
+    } else {
+      response.status(404).send()
+    }
+  })
+}
+const getTracksByArtist = (request, response) => {
+  const artist_id = request.params.artist_id;
+
+  pool.query('SELECT track_id AS id, tracks.album_id, tracks.name, duration, times_played, tracks.artist, album, tracks.self FROM tracks, albums  WHERE tracks.album_id = albums.album_id AND artist_id = $1', [artist_id], (error, results) => {
+    if (error) {
+      response.status(500).send()
+    }else if (results.rowCount) {
+      response.status(200).json(results.rows)
+    } else {
+      response.status(404).send()
+    }
+  })
+}
+const getTracksByAlbum = (request, response) => {
+  const album_id = request.params.album_id;
+
+  pool.query('SELECT track_id AS id, album_id, name, duration, times_played, artist, album, self FROM tracks WHERE album_id = $1', [album_id], (error, results) => {
+    if (error) {
+      response.status(500).send()
+    }else if (results.rowCount) {
+      response.status(200).json(results.rows)
+    } else {
+      response.status(404).send()
+    }
   })
 }
 
@@ -165,17 +259,38 @@ const addTrack = async (request, response) => {
 
 app
   .route('/artists')
-  // GET endpoint
   .get(getArtists)
-  // POST endpoint
   .post(addArtist)
 
 app
+  .route('/artists/:artist_id')
+  .get(getArtist)
+app
+  .route('/albums/:album_id')
+  .get(getAlbum)
+app
+  .route('/tracks/:track_id')
+  .get(getTrack)
+
+app
   .route('/artists/:artist_id/albums')
+  .get(getAlbumsByArtist)
   .post(addAlbum)
 
 app
+  .route('/artists/:artist_id/tracks')
+  .get(getTracksByArtist)
+
+app
+  .route('/albums')
+  .get(getAlbums)
+app
+  .route('/tracks')
+  .get(getTracks)
+
+app
   .route('/albums/:album_id/tracks')
+  .get(getTracksByAlbum)
   .post(addTrack)
 
 // Start server
