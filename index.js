@@ -150,6 +150,10 @@ const addArtist = (request, response) => {
   const albums = `https://integracion2gazali.herokuapp.com/artists/${artist_id}/albums`;
   const tracks = `https://integracion2gazali.herokuapp.com/artists/${artist_id}/tracks`;
   const self   = `https://integracion2gazali.herokuapp.com/artists/${artist_id}`;
+  if (!name || !age) {
+    response.status(400).send();
+    return
+  }
   pool.query(
     'INSERT INTO artists (artist_id, name, age, albums, tracks, self) VALUES ($1, $2, $3, $4, $5, $6)',
     [artist_id, name, age, albums, tracks, self],
@@ -191,6 +195,10 @@ const addAlbum = (request, response) => {
   const artist = `https://integracion2gazali.herokuapp.com/artists/${artist_id}`;
   const tracks = `https://integracion2gazali.herokuapp.com/albums/${album_id}/tracks`;
   const self   = `https://integracion2gazali.herokuapp.com/albums/${album_id}`;
+  if (!name || !genre) {
+    response.status(400).send();
+    return
+  }
   pool.query(
     'INSERT INTO albums (album_id, artist_id, name, genre, artist, tracks, self) VALUES ($1, $2, $3, $4, $5, $6, $7)',
     [album_id, artist_id, name, genre, artist, tracks, self],
